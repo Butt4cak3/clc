@@ -1,5 +1,28 @@
+use core::f64::consts::PI;
 use itertools::Itertools;
+use std::collections::HashMap;
 use std::collections::VecDeque;
+
+#[derive(Debug)]
+struct Context {
+    variables: HashMap<String, f64>,
+}
+
+impl Context {
+    fn new() -> Self {
+        Self {
+            variables: HashMap::new(),
+        }
+    }
+
+    fn set_variable(&mut self, name: &str, value: f64) {
+        self.variables.insert(String::from(name), value);
+    }
+
+    fn get_variable(&self, name: &str) -> Option<&f64> {
+        self.variables.get(name)
+    }
+}
 
 #[derive(Debug, Clone)]
 enum Token {
@@ -140,6 +163,7 @@ fn shunting_yard(tokens: Vec<Token>) -> VecDeque<Token> {
     for token in tokens {
         match token {
             Token::Number(_) => queue.push_back(token),
+            Token::Identifier(_) => queue.push_back(token),
             Token::Symbol(_) => {
                 while stack.len() > 0 {
                     queue.push_back(stack.pop().unwrap());
@@ -147,7 +171,7 @@ fn shunting_yard(tokens: Vec<Token>) -> VecDeque<Token> {
 
                 stack.push(token);
             }
-            _ => (),
+            Token::Whitespace(_) => (),
         }
     }
 
@@ -158,7 +182,7 @@ fn shunting_yard(tokens: Vec<Token>) -> VecDeque<Token> {
     queue
 }
 
-fn evaluate(queue: &VecDeque<Token>) -> f64 {
+fn evaluate(queue: &VecDeque<Token>, context: &Context) -> f64 {
     let mut stack: Vec<f64> = Vec::new();
 
     for token in queue {
@@ -169,6 +193,14 @@ fn evaluate(queue: &VecDeque<Token>) -> f64 {
                 let left = stack.pop().unwrap();
                 stack.push(left * right);
             }
+            Token::Identifier(name) => {
+                let variable = context.get_variable(name);
+                if let Some(&value) = variable {
+                    stack.push(value);
+                } else {
+                    panic!("Variable {} does not exist", name);
+                }
+            }
             _ => (),
         }
     }
@@ -177,11 +209,15 @@ fn evaluate(queue: &VecDeque<Token>) -> f64 {
 }
 
 fn main() {
-    let expression = "2 * 5";
+    let mut context = Context::new();
+    context.set_variable("pi", PI);
+
+    let expression = "2 * pi";
+
     let tokens: Vec<Token> = tokenize(expression).try_collect().unwrap();
 
     let queue = shunting_yard(tokens);
-    let result = evaluate(&queue);
+    let result = evaluate(&queue, &context);
 
     println!("{} = {}", expression, result);
 }
