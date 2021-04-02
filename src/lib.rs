@@ -113,19 +113,17 @@ pub fn shunting_yard(tokens: Vec<Token>, context: &Context) -> VecDeque<Token> {
                 }
             }
             Token::Whitespace(_) => (),
-            Token::LeftParen => stack.push(token),
-            Token::RightParen => {
+            Token::LeftParenthesis => stack.push(token),
+            Token::RightParenthesis => {
                 while let Some(token) = stack.last() {
-                    if let Token::LeftParen = token {
+                    if let Token::LeftParenthesis = token {
                         stack.pop();
+                        break;
                     } else if let Some(token) = stack.pop() {
                         queue.push_back(token);
                     } else {
                         panic!("Mismatched parentheses.");
                     }
-                }
-                while let Some(token) = stack.pop() {
-                    queue.push_back(token);
                 }
             }
         }
