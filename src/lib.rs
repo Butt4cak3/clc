@@ -241,5 +241,7 @@ mod tests {
     #[test]
     fn parentheses() {
         assert_eq!(calc("(2 + 3) * 4"), (2.0 + 3.0) * 4.0);
+        assert_eq!(calc("((2) + 3) * 4"), (2.0 + 3.0) * 4.0);
+        assert_eq!(calc("(5 + 3) * (4 - 1)"), (5.0 + 3.0) * (4.0 - 1.0));
     }
 }
