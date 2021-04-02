@@ -129,7 +129,7 @@ pub fn shunting_yard(tokens: Vec<Token>, context: &Context) -> VecDeque<Token> {
         }
     }
 
-    for token in stack.into_iter().rev() {
+    while let Some(token) = stack.pop() {
         queue.push_back(token);
     }
 
