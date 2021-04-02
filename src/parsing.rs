@@ -4,6 +4,8 @@ pub enum Token {
     Identifier(String),
     Symbol(String),
     Whitespace(String),
+    LeftParen,
+    RightParen,
 }
 
 impl Token {
@@ -13,6 +15,8 @@ impl Token {
             Self::Identifier(s) => s.len(),
             Self::Symbol(s) => s.len(),
             Self::Whitespace(s) => s.len(),
+            Self::LeftParen => 1,
+            Self::RightParen => 1,
         }
     }
 }
@@ -61,6 +65,14 @@ fn is_digit(s: char) -> bool {
 
 fn is_letter(s: char) -> bool {
     "abcdefghijklmnopqrstuvwxyz".contains(s)
+}
+
+fn is_left_paren(s: char) -> bool {
+    "(".contains(s)
+}
+
+fn is_right_paren(s: char) -> bool {
+    ")".contains(s)
 }
 
 fn parse_whitespace(expression: &str) -> &str {
@@ -121,6 +133,10 @@ fn parse_token(expression: &str) -> Result<Token, &'static str> {
         Ok(Token::Number(parse_number(&expression)?.to_owned()))
     } else if is_letter(current_char) {
         Ok(Token::Identifier(parse_identifier(&expression).to_owned()))
+    } else if is_left_paren(current_char) {
+        Ok(Token::LeftParen)
+    } else if is_right_paren(current_char) {
+        Ok(Token::RightParen)
     } else {
         Ok(Token::Symbol(String::from(&expression[0..1])))
     }

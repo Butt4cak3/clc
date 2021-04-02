@@ -113,6 +113,21 @@ pub fn shunting_yard(tokens: Vec<Token>, context: &Context) -> VecDeque<Token> {
                 }
             }
             Token::Whitespace(_) => (),
+            Token::LeftParen => stack.push(token),
+            Token::RightParen => {
+                while let Some(token) = stack.last() {
+                    if let Token::LeftParen = token {
+                        stack.pop();
+                    } else if let Some(token) = stack.pop() {
+                        queue.push_back(token);
+                    } else {
+                        panic!("Mismatched parentheses.");
+                    }
+                }
+                while let Some(token) = stack.pop() {
+                    queue.push_back(token);
+                }
+            }
         }
     }
 
@@ -223,5 +238,10 @@ mod tests {
     #[test]
     fn precedence() {
         assert_eq!(calc("2 + 3 * 4"), 2.0 + 3.0 * 4.0);
+    }
+
+    #[test]
+    fn parentheses() {
+        assert_eq!(calc("(2 + 3) * 4"), (2.0 + 3.0) * 4.0);
     }
 }
