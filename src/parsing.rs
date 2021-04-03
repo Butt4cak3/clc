@@ -56,7 +56,7 @@ impl Iterator for Tokens<'_> {
 }
 
 fn is_whitespace(s: char) -> bool {
-    s == ' '
+    "\t\n ".contains(s)
 }
 
 fn is_digit(s: char) -> bool {
