@@ -28,10 +28,45 @@ impl Operator {
     }
 }
 
-#[derive(Debug)]
+pub enum Function {
+    NativeFunction {
+        name: String,
+        num_args: usize,
+        execute: Box<dyn Fn(&[f64]) -> f64>,
+    },
+}
+
+impl Function {
+    pub fn get_name(&self) -> &str {
+        match self {
+            Self::NativeFunction { name, .. } => name,
+        }
+    }
+
+    pub fn apply(&self, stack: &mut Vec<f64>) {
+        match self {
+            Function::NativeFunction {
+                num_args, execute, ..
+            } => {
+                let mut args = Vec::new();
+                for _ in 0..*num_args {
+                    if let Some(arg) = stack.pop() {
+                        args.push(arg);
+                    } else {
+                        panic!("Not enough arguments left on stack");
+                    }
+                }
+                args.reverse();
+                stack.push(execute(&args));
+            }
+        }
+    }
+}
+
 pub struct Context {
     variables: HashMap<String, f64>,
     operators: HashMap<String, Operator>,
+    functions: HashMap<String, Function>,
 }
 
 impl Context {
@@ -39,6 +74,7 @@ impl Context {
         Self {
             variables: HashMap::new(),
             operators: HashMap::new(),
+            functions: HashMap::new(),
         }
     }
 
@@ -58,6 +94,19 @@ impl Context {
     pub fn get_operator(&self, symbol: &str) -> Option<&Operator> {
         self.operators.get(symbol)
     }
+
+    pub fn function_exists(&self, name: &str) -> bool {
+        self.functions.contains_key(name)
+    }
+
+    pub fn add_function(&mut self, function: Function) {
+        self.functions
+            .insert(function.get_name().to_string(), function);
+    }
+
+    pub fn get_function(&self, name: &str) -> Option<&Function> {
+        self.functions.get(name)
+    }
 }
 
 impl Default for Context {
@@ -68,6 +117,16 @@ impl Default for Context {
         context.add_operator("*", 3, Associativity::Left);
         context.add_operator("/", 3, Associativity::Left);
         context.add_operator("^", 4, Associativity::Right);
+        context.add_function(Function::NativeFunction {
+            name: String::from("min"),
+            num_args: 2,
+            execute: Box::new(|args| if args[0] < args[1] { args[0] } else { args[1] }),
+        });
+        context.add_function(Function::NativeFunction {
+            name: String::from("max"),
+            num_args: 2,
+            execute: Box::new(|args| if args[0] > args[1] { args[0] } else { args[1] }),
+        });
         context
     }
 }
@@ -103,6 +162,7 @@ pub fn shunting_yard(tokens: Vec<Token>, context: &Context) -> VecDeque<Token> {
     for token in tokens {
         match token {
             Token::Number(_) => queue.push_back(token),
+            Token::Identifier(ref name) if context.function_exists(name) => stack.push(token),
             Token::Identifier(_) => queue.push_back(token),
             Token::Symbol(ref symbol) => {
                 if let Some(operator) = context.get_operator(&symbol) {
@@ -118,12 +178,28 @@ pub fn shunting_yard(tokens: Vec<Token>, context: &Context) -> VecDeque<Token> {
                 while let Some(token) = stack.last() {
                     if let Token::LeftParenthesis = token {
                         stack.pop();
+                        if let Some(Token::Identifier(_)) = stack.last() {
+                            queue.push_back(stack.pop().unwrap());
+                        }
                         break;
                     } else if let Some(token) = stack.pop() {
                         queue.push_back(token);
                     } else {
                         panic!("Mismatched parentheses.");
                     }
+                }
+            }
+            Token::ArgumentSeparator => {
+                while let Some(token) = stack.last() {
+                    if let Token::LeftParenthesis = token {
+                        break;
+                    } else {
+                        queue.push_back(stack.pop().unwrap());
+                    }
+                }
+
+                if stack.len() == 0 {
+                    panic!("Stack is empty");
                 }
             }
         }
@@ -168,9 +244,10 @@ pub fn evaluate_queue(queue: &VecDeque<Token>, context: &Context) -> f64 {
                 stack.push(left.powf(right));
             }
             Token::Identifier(name) => {
-                let variable = context.get_variable(name);
-                if let Some(&value) = variable {
+                if let Some(&value) = context.get_variable(name) {
                     stack.push(value);
+                } else if let Some(function) = context.get_function(name) {
+                    function.apply(&mut stack);
                 } else {
                     panic!("Variable {} does not exist", name);
                 }
@@ -244,5 +321,10 @@ mod tests {
         assert_eq!(calc("((2) + 3) * 4"), (2.0 + 3.0) * 4.0);
         assert_eq!(calc("(5 + 3) * (4 - 1)"), (5.0 + 3.0) * (4.0 - 1.0));
         assert_eq!(calc("2^(9+1)"), f64::powf(2.0, 9.0 + 1.0));
+    }
+
+    #[test]
+    fn functions() {
+        assert_eq!(calc("max(2 * 4, 3 + 5)"), 8.0);
     }
 }

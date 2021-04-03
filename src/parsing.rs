@@ -6,6 +6,7 @@ pub enum Token {
     Whitespace(String),
     LeftParenthesis,
     RightParenthesis,
+    ArgumentSeparator,
 }
 
 impl Token {
@@ -17,6 +18,7 @@ impl Token {
             Self::Whitespace(s) => s.len(),
             Self::LeftParenthesis => 1,
             Self::RightParenthesis => 1,
+            Self::ArgumentSeparator => 1,
         }
     }
 }
@@ -73,6 +75,10 @@ fn is_left_parenthesis(s: char) -> bool {
 
 fn is_right_parenthesis(s: char) -> bool {
     s == ')'
+}
+
+fn is_argument_separator(s: char) -> bool {
+    s == ','
 }
 
 fn parse_whitespace(expression: &str) -> &str {
@@ -137,6 +143,8 @@ fn parse_token(expression: &str) -> Result<Token, &'static str> {
         Ok(Token::LeftParenthesis)
     } else if is_right_parenthesis(current_char) {
         Ok(Token::RightParenthesis)
+    } else if is_argument_separator(current_char) {
+        Ok(Token::ArgumentSeparator)
     } else {
         Ok(Token::Symbol(String::from(&expression[0..1])))
     }
